@@ -1,0 +1,224 @@
+// Worship Drone 2.0
+// (c) 2017 Meyers Audio
+// jeff@meyersaudio.com
+//-------------------------------------------------------------
+
+var PluginParameters = [
+                        {
+                            name:"------ Mode ------",
+                            type:"text",
+                        },
+                        {
+                            name:"Mode", type:"menu",
+                            valueStrings:["off", "latch", "drone"],
+                            minValue:0, 
+                            maxValue:2, 
+                            defaultValue:0, 
+                            numberOfSteps:2
+                        },
+                        {
+                            name:"------ Drone Settings ------",
+                            type:"text",
+                        },
+                        {
+                            name:"Note", type:"menu", 
+                            valueStrings:["A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"],
+                            minValue:0, 
+                            maxValue:11, 
+                            defaultValue:0, 
+                            numberOfSteps:11
+                        },
+                        {
+                            name:"Drone Type", type:"menu",
+                            valueStrings:["1,5", "1,5,1", "1,1,5,1"],
+                            minValue:0,
+                            maxValue:2,
+                            defaultValue:1,
+                            numberOfSteps:2
+                        },
+                        {
+                            name:"Transpose", type:"lin",
+                            minValue:-1, 
+                            maxValue:1, 
+                            defaultValue:0, 
+                            numberOfSteps:2
+                        },
+                        {
+                            name:"Velocity", type:"lin",
+                            minValue:0, 
+                            maxValue:127, 
+                            defaultValue:65, 
+                            numberOfSteps:127
+                        },
+                        {
+                            name:"Drone Trigger", type:"lin",
+                            minValue:0, 
+                            maxValue:1, 
+                            defaultValue:0, 
+                            numberOfSteps:1}
+                        ];
+
+
+function HandleMIDI(event)
+{
+    // Modes are 0 = Off, 1 = latch, 2 = drone
+    var mode = GetParameter("Mode")
+    
+    // If Mode is off then all events are sent as entered
+    if (mode == 0)
+    {
+        event.send();
+        event.trace();
+    }
+    
+    // if mode is latch then note events are sustained until new note events are received
+    else if (mode == 1)
+    {
+        if (event instanceof NoteOn)
+        {
+            var cc = new ControlChange;
+            cc.number = 64;
+            cc.value = 0
+            cc.send();
+            cc.trace();
+            event.send();
+            event.trace();
+            cc.value = 127;
+            cc.send();
+            cc.trace();
+        }
+        if (event instanceof NoteOff)
+        {
+            event.send();
+            event.trace();
+        }
+    }
+    
+    // if mode is drone then all midi events are blocked
+    else if (mode == 2){}
+}
+
+
+function ParameterChanged()
+{
+    var mode = GetParameter("Mode")
+    
+    // if mode is off then nothing happens
+    if (mode == 0)
+    {
+        var cc = new ControlChange;
+        cc.number = 64;
+        cc.value = 0
+        cc.send();
+        cc.trace();
+    }
+    
+    // if mode is latch then nothing happens
+    else if (mode == 1)
+    {
+        var cc = new ControlChange;
+        cc.number = 64;
+        cc.value = 0
+        cc.send();
+        cc.trace();
+    }
+    
+    // drone function
+    else if (mode == 2)
+    {
+        var trigger = GetParameter("Drone Trigger")
+        var dtype = GetParameter("Drone Type")
+        var transpose = GetParameter("Transpose")
+        var vel = GetParameter("Velocity")
+        
+        // drone initiates if trigger is on
+        if (trigger == 1)
+        {
+            var cc = new ControlChange;
+            cc.number = 64
+            cc.value = 0
+            cc.send();
+            
+            // 1,5
+            if (dtype == 0)
+            {
+                var noteOn = new NoteOn();
+                noteOn.pitch = 57 + GetParameter("Note") + (transpose * 12);
+                noteOn.velocity = vel
+                noteOn.send();
+                noteOn.pitch = 57 + GetParameter("Note") + 7 + (transpose * 12);
+                noteOn.send();
+                
+                cc.value = 127
+                cc.send();
+                
+                var noteOff = new NoteOff();
+                noteOff.pitch = 57 + GetParameter("Note") + (transpose * 12);
+                noteOff.send();
+                noteOff.pitch = 57 + GetParameter("Note") + 7 + (transpose * 12);
+                noteOff.send();
+            }
+            
+            // 1,5,1
+            else if (dtype == 1)
+            {
+                var noteOn = new NoteOn();
+                noteOn.pitch = 57 + GetParameter("Note") + (transpose * 12);
+                noteOn.velocity = vel
+                noteOn.send();
+                noteOn.pitch = 57 + GetParameter("Note") + 7 + (transpose * 12);
+                noteOn.send();
+                noteOn.pitch = 57 + GetParameter("Note") + 12 + (transpose * 12);
+                noteOn.send();
+                
+                cc.value = 127
+                cc.send();
+                
+                var noteOff = new NoteOff();
+                noteOff.pitch = 57 + GetParameter("Note") + (transpose * 12);
+                noteOff.send();
+                noteOff.pitch = 57 + GetParameter("Note") + 7 + (transpose * 12);
+                noteOff.send();
+                noteOff.pitch = 57 + GetParameter("Note") + 12 + (transpose * 12);
+                noteOff.send();
+            }
+            
+            // 1,1,5,1
+            else if (dtype == 2)
+            {
+                var noteOn = new NoteOn();
+                noteOn.pitch = 57 + GetParameter("Note") - 12 + (transpose * 12);
+                noteOn.velocity = vel
+                noteOn.send();
+                noteOn.pitch = 57 + GetParameter("Note") + (transpose * 12);
+                noteOn.send();
+                noteOn.pitch = 57 + GetParameter("Note") + 7 + (transpose * 12);
+                noteOn.send();
+                noteOn.pitch = 57 + GetParameter("Note") + 12 + (transpose * 12);
+                noteOn.send();
+                
+                cc.value = 127
+                cc.send();
+                
+                var noteOff = new NoteOff();
+                noteOff.pitch = 57 + GetParameter("Note") - 12 + (transpose * 12);
+                noteOff.send();
+                noteOff.pitch = 57 + GetParameter("Note") + (transpose * 12);
+                noteOff.send();
+                noteOff.pitch = 57 + GetParameter("Note") + 7 + (transpose * 12);
+                noteOff.send();
+                noteOff.pitch = 57 + GetParameter("Note") + 12 + (transpose * 12);
+                noteOff.send();
+            }
+        }
+        
+        // if trigger is off then NoteOff events are sent
+        else if (trigger == 0)
+        {
+            var cc = new ControlChange;
+            cc.number = 64
+            cc.value = 0
+            cc.send();
+        }
+    }
+}
