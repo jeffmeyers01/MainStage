@@ -1,0 +1,71 @@
+// LowNote Bass Script 1.0
+// (c) Jeff Meyers
+// jeff@meyersaudio.com
+
+// global variables
+var lownote
+var oldnote = 1000
+var activeNotes = [];
+var currentEvent
+
+function HandleMIDI(event){
+  currentEvent = event.pitch
+
+  // When a note is pressed . . .
+  if (event instanceof NoteOn){
+    activeNotes.push(event.pitch);
+    FindLowNote();
+    PlayNotes();
+  }
+
+  // When a note is released, mark as released and send noteoff
+  else if (event instanceof NoteOff){
+    for (i in activeNotes){
+      if (activeNotes[i] == event.pitch){
+        activeNotes.splice(i,1);
+      }
+    }
+
+    FindLowNote();
+    PlayNotes();
+    event.send();
+    event.trace();
+   }
+
+  // When any other midi message is received, pass it through.
+  else {
+    event.send();
+    event.trace();
+   }
+}
+
+// determines lowest note depressed
+function FindLowNote(){
+  lownote = 1000
+  for (i in activeNotes){
+    if (lownote > activeNotes[i]){
+      lownote = activeNotes[i];
+    }
+  }
+}
+
+function PlayNotes(){
+  // turn off previous note
+  if (oldnote != lownote){
+    var newoff = new NoteOff;
+    newoff.pitch = oldnote ;
+    newoff.send();
+    newoff.trace();
+
+    // turn on new note
+    if (lownote != 1000){
+      var newnote = new NoteOn;
+      newnote.pitch = lownote;
+      newnote.send();
+      newnote.trace();
+    }
+
+    // reassign oldnote
+    oldnote = lownote
+  }
+}
